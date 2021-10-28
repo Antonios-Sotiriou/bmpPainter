@@ -7,6 +7,7 @@ If you are interested in obtaining this software, clone it and compile it with t
 ```
 make all
 ```
+I include the gcc debugger flag "-g" in Makefile.If you don't need to use debugger you can remove it.<br>
 If compiling will be success run the executable
 ```
 ./crwindow
