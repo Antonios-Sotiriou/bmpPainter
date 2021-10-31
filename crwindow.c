@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <X11/Xlib.h>
+#include "header_files/bmp.h"
 #include "header_files/bmp_parser.h"
 
 //Window cr_button(Display *displ, Window win, int screen);
@@ -13,8 +14,8 @@ int main(int argc, char *argv[]) {
     Window win/*, child_win*/;
     XEvent event;
 
-    /* BMP files parser which reurn a pointer to the image data array.Should return also height and width values.Maybe with a structure. */
-    char *pixel_array = bmp_parser();
+    /* BMP files parser which return a pointer to the image data array.Should return also height and width values.Maybe with a structure. */
+    BMP_Image bmp_image = bmp_parser();
 
     displ = XOpenDisplay(NULL);
     if (displ == NULL) {
@@ -26,7 +27,7 @@ int main(int argc, char *argv[]) {
     printf("Default screen value: %d\n", screen);
 
     /*  Parent Window */
-    win = XCreateSimpleWindow(displ, XRootWindow(displ, screen), 0, 0, 800, 500, 0, XWhitePixel(displ, screen), XBlackPixel(displ, screen));
+    win = XCreateSimpleWindow(displ, XRootWindow(displ, screen), 0, 0, 800, 600, 0, XWhitePixel(displ, screen), XBlackPixel(displ, screen));
     XSelectInput(displ, win, ExposureMask | KeyPressMask /*| PointerMotionMask*/);
     XMapWindow(displ, win);
 
@@ -56,7 +57,7 @@ int main(int argc, char *argv[]) {
     //XGCValues values;
     //values.graphics_exposures = True;
     GC gc = XCreateGC(displ, win, 0, 0);
-    XImage *image = XCreateImage(displ, winattr.visual, winattr.depth, ZPixmap, 0, pixel_array, 640, 426, 32, 0);
+    XImage *image = XCreateImage(displ, winattr.visual, winattr.depth, ZPixmap, 0, bmp_image.data, bmp_image.width, bmp_image.heigth, 32, 0);
 
     while (1) {
         while (XPending(displ) > 0) {
@@ -72,7 +73,7 @@ int main(int argc, char *argv[]) {
                 if (event.xclient.data.l[0] == wm_delete_window) {
                     printf("WM_DELETE_WINDOW");
                     XFreeGC(displ, gc);
-                    free(pixel_array);
+                    free(bmp_image.data);
                     XCloseDisplay(displ);
                     return 0;
                 }
@@ -84,7 +85,7 @@ int main(int argc, char *argv[]) {
                 /* Draw some lines to experiment */
                 //XDrawLine(displ, child_win, DefaultGC(displ, screen), rand() % 180, rand() % 80, rand() % 60, rand() % 60);
             }
-            XPutImage(displ, win, gc, image, 0, 0, 0, 0, 640, 426);
+            XPutImage(displ, win, gc, image, 0, 0, 0, 0, bmp_image.width, bmp_image.heigth);
             XSync(displ, False);
         }
     }

@@ -61,6 +61,11 @@ typedef struct {
     unsigned char BluePixel;
     unsigned char GreenPixel;
 } Pixels;
+typedef struct {
+    int width;
+    int heigth;
+    char *data;
+} BMP_Image;
 
 #endif /* BMP_H */
 

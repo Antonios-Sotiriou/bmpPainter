@@ -3,7 +3,7 @@
 #include "header_files/bmp.h"
 #include "header_files/bmp_parser.h"
 
-void * bmp_parser() {
+BMP_Image bmp_parser() {
 
     BMP_Header header;
     BMP_Info info;
@@ -16,6 +16,7 @@ void * bmp_parser() {
     FILE *fp;
     char fname[] = {"/home/as/Desktop/sample.bmp"};
     char *image_data;
+    BMP_Image bmp_image;
     
     // printf("Enter file path: \n");
     // scanf("%s", &fname);
@@ -30,6 +31,8 @@ void * bmp_parser() {
             if (info.Size != 0) {
                 printf("Aquired Header info size: %d\n", info.Size);
                 fseek(fp, 14 + info.Size, SEEK_SET);
+                bmp_image.width = info.Width;
+                bmp_image.heigth = info.Height;
                 /* Allocate the amount of memory needed to store the pixel array */
                 image_data = calloc(1, sizeof(char) * info.Height * info.Width * 4);
                 if (image_data != NULL) {
@@ -49,35 +52,39 @@ void * bmp_parser() {
                                 x++;
                                 dynamic_inc++;
                             } else {
-                                 fprintf(stderr, "Failed to allocate memory for the image data.\n");
-                                 return NULL;
+                                fprintf(stderr, "Failed to allocate memory for the image data.\n");
+                                bmp_image.data = "Error 4";
+                                return bmp_image;
                             }
                         }
                     }
                 } else {
                     fprintf(stderr, "Failed to allocate memory for the image data.\n");
-                    return NULL;
+                    bmp_image.data = "Error 3";
+                    return bmp_image; 
                 }
             } else {
                 fprintf(stderr, "File doesn't provide informations about the Header and info size.\n");
-                return NULL;
+                bmp_image.data = "Error 2";
+                return bmp_image;
             }
         } else {
             fprintf(stderr, "Unsuported file Extension.Provide a bmp file\n");
-            return NULL;
+            bmp_image.data = "Error 1";
+            return bmp_image;
         }
     }
     fclose(fp);
     free(pixel_array);
     /* Fixing image rotation and orientation */
-    char *rev_image = calloc(1, sizeof(char) * info.Height * info.Width * 4);
+    bmp_image.data = calloc(1, sizeof(char) * info.Height * info.Width * 4);
     int z = 0;
     int starting_point = (sizeof(char) * info.Height * info.Width * 4) - (info.Width * 4);
     int step_point = info.Width * 4;
     int end_point = sizeof(char) * info.Height * info.Width * 4;
     while (end_point != 0) {
         for (int i = starting_point; i <= end_point; i++) {
-            rev_image[z] = image_data[i];
+            bmp_image.data[z] = image_data[i];
             z++;
             if (z == step_point) {
                 end_point = starting_point;
@@ -88,19 +95,19 @@ void * bmp_parser() {
     }
     free(image_data);
 
-    return rev_image;
+    return bmp_image;
 }
 
     /* Fixing image rotation and orientation */
     // int z = 0;
-    // char *rev_image = calloc(1, sizeof(char) * info.Height * info.Width * 4);
+    // char *bmp_image.data = calloc(1, sizeof(char) * info.Height * info.Width * 4);
     // for (int i = (sizeof(char) * info.Height * info.Width * 4) - 1; i >= 0; i -= 4) {
-    //     rev_image[z] = image_data[i - 3];
-    //     rev_image[z + 1] = image_data[i - 2];
-    //     rev_image[z + 2] = image_data[i - 1];
-    //     rev_image[z + 3] = image_data[i];    
+    //     bmp_image.data[z] = image_data[i - 3];
+    //     bmp_image.data[z + 1] = image_data[i - 2];
+    //     bmp_image.data[z + 2] = image_data[i - 1];
+    //     bmp_image.data[z + 3] = image_data[i];    
     //     z += 4;
     // }
     // free(image_data);
-    // return rev_image;
+    // return bmp_image.data;
 
