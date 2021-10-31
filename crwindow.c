@@ -10,11 +10,11 @@ int main(int argc, char *argv[]) {
 
     Display *displ;
     int screen;
-    Window win/*, child_win*/;
+    Window win, in_frame, x_close;;
     XEvent event;
 
     /* BMP files parser which reurn a pointer to the image data array.Should return also height and width values.Maybe with a structure. */
-    char *pixel_array = bmp_parser();
+    //char *pixel_array = bmp_parser();
 
     displ = XOpenDisplay(NULL);
     if (displ == NULL) {
@@ -22,13 +22,45 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    screen = DefaultScreen(displ);
+    screen = XDefaultScreen(displ);
     printf("Default screen value: %d\n", screen);
 
-    /*  Parent Window */
-    win = XCreateSimpleWindow(displ, XRootWindow(displ, screen), 0, 0, 800, 500, 0, XWhitePixel(displ, screen), XBlackPixel(displ, screen));
-    XSelectInput(displ, win, ExposureMask | KeyPressMask /*| PointerMotionMask*/);
+    /* Window without Window Manager */
+    XWindowAttributes winattr;
+    XGetWindowAttributes(displ, XDefaultRootWindow(displ), &winattr);
+    printf("Width: %d", winattr.width);
+    printf("Heigth: %d", winattr.height);
+    XSetWindowAttributes root_attr;
+    root_attr.background_pixel = XBlackPixel(displ, screen);
+    root_attr.event_mask = ExposureMask | StructureNotifyMask | SubstructureNotifyMask | ButtonPressMask | KeyPressMask | KeyReleaseMask | PointerMotionMask;
+    root_attr.cursor = None;
+    root_attr.override_redirect = True;
+
+    win = XCreateWindow(displ, XDefaultRootWindow(displ), 440, 240, 800, 500, 0, winattr.depth, InputOutput, winattr.visual, CWCursor | CWEventMask | CWBackPixel | CWOverrideRedirect, &root_attr);
+    XSelectInput(displ, win, root_attr.event_mask);
     XMapWindow(displ, win);
+
+    /* X close button */
+    x_close = XCreateSimpleWindow(displ, win, 775, 0, 15, 15, 5, 0xff0000ff, 0x00ff00ff00);
+    XGCValues sign;
+    sign.line_width = 4;
+    sign.line_style = LineSolid;
+    sign.fill_rule = WindingRule;
+    sign.foreground = 0XFF0000;
+    GC sign_x = XCreateGC(displ, win, GCForeground | GCLineWidth | GCLineStyle | GCFillRule, &sign);
+    XSelectInput(displ, x_close, ButtonPressMask);
+    XMapWindow(displ, x_close);
+    XDrawLine(displ, x_close, sign_x, 0, 0, 15, 15);
+    XDrawLine(displ, x_close, sign_x, 15, 0, 0, 15);
+
+    /*  Parent Window */
+    in_frame = XCreateSimpleWindow(displ, win, 0, 20, 790, 470, 5, 0xff0000ff, 0x00ff00ff00);
+    //XSelectInput(displ, win, ExposureMask | KeyPressMask /*| PointerMotionMask*/);
+    XMapWindow(displ, in_frame);
+
+    /* Write Text on window area */
+    XFontStruct *font;
+    XTextItem text[1];
 
     /* Delete window initializer area */
     Atom wm_delete_window = XInternAtom(displ, "WM_DELETE_WINDOW", False);
@@ -48,43 +80,65 @@ int main(int argc, char *argv[]) {
     //XSync(displ, False);
 
     /* Get window attributes */
-    XWindowAttributes winattr;
-    XGetWindowAttributes(displ, win, &winattr);
+    //XWindowAttributes winattr;
+    //XGetWindowAttributes(displ, win, &winattr);
     fprintf(stdout, "Window attributtes(visual): %p\n", winattr.visual);
 
     /* Add grafical context to window */
-    //XGCValues values;
-    //values.graphics_exposures = True;
-    GC gc = XCreateGC(displ, win, 0, 0);
-    XImage *image = XCreateImage(displ, winattr.visual, winattr.depth, ZPixmap, 0, pixel_array, 640, 426, 32, 0);
+    XGCValues values;
+    values.line_width = 2;
+    values.line_style = LineSolid;
+    values.fill_rule = WindingRule;
+    values.foreground =XWhitePixel(displ, screen);
+    GC gc = XCreateGC(displ, win, GCForeground | GCLineWidth | GCLineStyle | GCFillRule, &values);
+    //XImage *image = XCreateImage(displ, winattr.visual, winattr.depth, ZPixmap, 0, pixel_array, 640, 426, 32, 0);
 
     while (1) {
         while (XPending(displ) > 0) {
             XNextEvent(displ, &event);
-            // if (event.xmotion.subwindow == child_win || event.xany.window == child_win) {
-            //     printf("Child Window Event.\n");
-            //     printf("Event Type: %d\n", event.type);
-            // } else if (event.type == ButtonPress && event.xclient.window == button) {
-            //     printf("A button was Presed\n");
-            // } else if (event.type == ButtonRelease && event.xclient.window == button) {
-            //     printf("A button was Released\n");
+            if (event.type == ButtonPress && event.xclient.window == x_close) {
+                printf("Child Window Event.\n");
+                XClientMessageEvent destroy;
+
+                destroy.type = ClientMessage;
+                destroy.message_type = wm_delete_window;
+                destroy.format = 32;
+                destroy.data.l[0] = wm_delete_window;
+                event.xclient = destroy;
+                XSendEvent(displ, win, True, ClientMessage, &event);
+            }
             if (event.type == ClientMessage) {
+                printf("Client Message Event.\n");
                 if (event.xclient.data.l[0] == wm_delete_window) {
                     printf("WM_DELETE_WINDOW");
                     XFreeGC(displ, gc);
-                    free(pixel_array);
+                    XDestroyWindow(displ, win);
+                    //free(pixel_array);
                     XCloseDisplay(displ);
                     return 0;
                 }
             } else if (event.type == Expose && event.xclient.window == win) {
+                XSetInputFocus(displ, win, RevertToPointerRoot, CurrentTime);
                 printf("Expose Event occured.\n");
+                font = XLoadQueryFont(displ, "7x14");
+                text[0].chars = "Press Me!";
+                text[0].nchars = 9;
+                text[0].delta = 0;
+                text[0].font = font->fid;
+                XDrawText(displ, win, gc, (800 - XTextWidth(font, text[0].chars, text[0].nchars)) / 2, (500 - (font->ascent + font->descent)) / 2 + font->ascent, text, 1);
+                XUnloadFont(displ, font->fid);
+            } else if (event.type == KeyPress && event.xclient.window == win) {        
+                printf("Button pressed.\n");
+                //if (event.xkey.keycode == '\t') {
+                    printf("The Button that was pressed is %i.\n", event.xbutton.button);
+                //}
             } else {
                 printf("Main Window Event.\n");
                 printf("Event Type: %d\n", event.type);
                 /* Draw some lines to experiment */
-                //XDrawLine(displ, child_win, DefaultGC(displ, screen), rand() % 180, rand() % 80, rand() % 60, rand() % 60);
+                XDrawLine(displ, win, gc, rand() % 800, rand() % 800, rand() % 500, rand() % 500);
             }
-            XPutImage(displ, win, gc, image, 0, 0, 0, 0, 640, 426);
+            //XPutImage(displ, win, gc, image, 0, 0, 0, 0, 640, 426);
             XSync(displ, False);
         }
     }
