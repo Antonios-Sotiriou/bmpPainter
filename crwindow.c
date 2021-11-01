@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <X11/Xlib.h>
+#include <X11/keysym.h>
 #include "header_files/bmp_parser.h"
 
 //Window cr_button(Display *displ, Window win, int screen);
@@ -66,6 +67,32 @@ int main(int argc, char *argv[]) {
     Atom wm_delete_window = XInternAtom(displ, "WM_DELETE_WINDOW", False);
     XSetWMProtocols(displ, win, &wm_delete_window, 1);
 
+    /* Get user text input */
+    XIM xim;
+    XIC xic;
+    char *failed_arg;
+    XIMStyles *styles;
+    //XIMStyle xim_requested_style;
+    xim = XOpenIM(displ, NULL, NULL, NULL);
+    if (xim == NULL) {
+        fprintf(stderr, "Failed to open Input Method.\n");
+        exit(2);
+    }
+    failed_arg = XGetIMValues(xim, XNQueryInputStyle, &styles, NULL);
+    if (failed_arg != NULL) {
+        fprintf(stderr, "Failed to obtain input method's styles.\n");
+        exit(3);
+    }
+    for (int i = 0; i < styles->count_styles; i++) {
+        printf("Styles supported %lu.\n", styles->supported_styles[i]);
+    }
+    xic = XCreateIC(xim, XNInputStyle, XIMPreeditArea | XIMStatusArea, XNClientWindow, win, NULL);
+    if (xic == NULL) {
+        fprintf(stderr, "Could not open xic.\n");
+        exit(4);
+    }
+    XSetICFocus(xic);
+
     /* Change main window Title */
     Atom new_attr = XInternAtom(displ, "WM_NAME", False);
     Atom type =  XInternAtom(displ, "STRING", False);
@@ -97,7 +124,7 @@ int main(int argc, char *argv[]) {
         while (XPending(displ) > 0) {
             XNextEvent(displ, &event);
             if (event.type == ButtonPress && event.xclient.window == x_close) {
-                printf("Child Window Event.\n");
+                //printf("Child Window Event.\n");
                 XClientMessageEvent destroy;
 
                 destroy.type = ClientMessage;
@@ -119,7 +146,7 @@ int main(int argc, char *argv[]) {
                 }
             } else if (event.type == Expose && event.xclient.window == win) {
                 XSetInputFocus(displ, win, RevertToPointerRoot, CurrentTime);
-                printf("Expose Event occured.\n");
+                //printf("Expose Event occured.\n");
                 font = XLoadQueryFont(displ, "7x14");
                 text[0].chars = "Press Me!";
                 text[0].nchars = 9;
@@ -127,14 +154,27 @@ int main(int argc, char *argv[]) {
                 text[0].font = font->fid;
                 XDrawText(displ, win, gc, (800 - XTextWidth(font, text[0].chars, text[0].nchars)) / 2, (500 - (font->ascent + font->descent)) / 2 + font->ascent, text, 1);
                 XUnloadFont(displ, font->fid);
-            } else if (event.type == KeyPress && event.xclient.window == win) {        
+            } else if (event.type == KeyPress && event.xclient.window == win) {  
+                int count = 0;  
+                KeySym keysym = 0;
+                char buffer[32];
+                Status status = 0;   
+                count = Xutf8LookupString(xic, &event.xkey, buffer, 32, &keysym, &status);
                 printf("Button pressed.\n");
-                //if (event.xkey.keycode == '\t') {
-                    printf("The Button that was pressed is %i.\n", event.xbutton.button);
-                //}
+                printf("Count %d.\n", count);
+                if (status == XBufferOverflow) {
+                    printf("Buffer Overflow...\n");
+                }
+                if (count) {
+                    printf("The Button that was pressed is %s.\n", buffer);
+                }
+                if (status == XLookupKeySym || status == XLookupBoth) {
+                    printf("Status: %d\n", status);
+                 }
+                printf("Pressed key: %lu.\n", keysym);
             } else {
-                printf("Main Window Event.\n");
-                printf("Event Type: %d\n", event.type);
+                //printf("Main Window Event.\n");
+                //printf("Event Type: %d\n", event.type);
                 /* Draw some lines to experiment */
                 XDrawLine(displ, win, gc, rand() % 800, rand() % 800, rand() % 500, rand() % 500);
             }
