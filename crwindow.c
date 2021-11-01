@@ -53,11 +53,45 @@ int main(int argc, char *argv[]) {
     XGetWindowAttributes(displ, win, &winattr);
     fprintf(stdout, "Window attributtes(visual): %p\n", winattr.visual);
 
+    /* Write Text on window area */
+    XFontStruct *font;
+    XTextItem text[1];
+
     /* Add grafical context to window */
-    //XGCValues values;
-    //values.graphics_exposures = True;
-    GC gc = XCreateGC(displ, win, 0, 0);
+    XGCValues values;
+    values.line_width = 2;
+    values.line_style = LineSolid;
+    values.fill_rule = WindingRule;
+    values.foreground =XWhitePixel(displ, screen);
+    GC gc = XCreateGC(displ, win, GCForeground | GCLineWidth | GCLineStyle | GCFillRule, &values);
+    //GC gc = XCreateGC(displ, win, 0, 0);
     XImage *image = XCreateImage(displ, winattr.visual, winattr.depth, ZPixmap, 0, bmp_image.data, bmp_image.width, bmp_image.heigth, 32, 0);
+
+    /* Get user text input *******************************************************************/
+    XIM xim;
+    XIC xic;
+    char *failed_arg;
+    XIMStyles *styles;
+    //XIMStyle xim_requested_style;
+    xim = XOpenIM(displ, NULL, NULL, NULL);
+    if (xim == NULL) {
+        fprintf(stderr, "Failed to open Input Method.\n");
+        exit(2);
+    }
+    failed_arg = XGetIMValues(xim, XNQueryInputStyle, &styles, NULL);
+    if (failed_arg != NULL) {
+        fprintf(stderr, "Failed to obtain input method's styles.\n");
+        exit(3);
+    }
+    for (int i = 0; i < styles->count_styles; i++) {
+        printf("Styles supported %lu.\n", styles->supported_styles[i]);
+    }
+    xic = XCreateIC(xim, XNInputStyle, XIMPreeditNothing | XIMStatusNothing, XNClientWindow, win, NULL);
+    if (xic == NULL) {
+        fprintf(stderr, "Could not open xic.\n");
+        exit(4);
+    }
+    XSetICFocus(xic);
 
     while (1) {
         while (XPending(displ) > 0) {
@@ -78,7 +112,33 @@ int main(int argc, char *argv[]) {
                     return 0;
                 }
             } else if (event.type == Expose && event.xclient.window == win) {
+                XSetInputFocus(displ, win, RevertToPointerRoot, CurrentTime);
                 printf("Expose Event occured.\n");
+                font = XLoadQueryFont(displ, "7x14");
+                text[0].chars = "Press Me!";
+                text[0].nchars = 9;
+                text[0].delta = 0;
+                text[0].font = font->fid;
+                XDrawText(displ, win, gc, (800 - XTextWidth(font, text[0].chars, text[0].nchars)) / 2, (500 - (font->ascent + font->descent)) / 2 + font->ascent, text, 1);
+                XUnloadFont(displ, font->fid);
+            } else if (event.type == KeyPress && event.xclient.window == win) {  
+                int count = 0;  
+                KeySym keysym = 0;
+                char buffer[32];
+                Status status = 0;   
+                count = Xutf8LookupString(xic, &event.xkey, buffer, 32, &keysym, &status);
+                printf("Button pressed.\n");
+                printf("Count %d.\n", count);
+                if (status == XBufferOverflow) {
+                    printf("Buffer Overflow...\n");
+                }
+                if (count) {
+                    printf("The Button that was pressed is %s.\n", buffer);
+                }
+                if (status == XLookupKeySym || status == XLookupBoth) {
+                    printf("Status: %d\n", status);
+                 }
+                printf("Pressed key: %lu.\n", keysym);
             } else {
                 printf("Main Window Event.\n");
                 printf("Event Type: %d\n", event.type);
