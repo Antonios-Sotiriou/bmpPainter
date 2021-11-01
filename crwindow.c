@@ -107,6 +107,7 @@ int main(int argc, char *argv[]) {
                 if (event.xclient.data.l[0] == wm_delete_window) {
                     printf("WM_DELETE_WINDOW");
                     XFreeGC(displ, gc);
+                    XFree(xic);
                     free(bmp_image.data);
                     XCloseDisplay(displ);
                     return 0;
