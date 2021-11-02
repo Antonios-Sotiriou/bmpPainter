@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <X11/Xlib.h>
+#include <X11/keysym.h>
+#include <X11/Xlocale.h>
 #include "header_files/bmp.h"
 #include "header_files/bmp_parser.h"
 
@@ -13,6 +15,19 @@ int main(int argc, char *argv[]) {
     int screen;
     Window win/*, child_win*/;
     XEvent event;
+
+    if (setlocale(LC_ALL, "") == NULL) {
+        fprintf(stderr, "setlocale(LC_ALL, "") is NULL.\n");
+        exit(1);
+    }
+    if (!XSupportsLocale()) {
+        fprintf(stderr, "Locale is not supported.Exiting.\n");
+        exit(1);
+    }
+    if (XSetLocaleModifiers("") == NULL) {
+        fprintf(stderr, "XSetLocaleModifiers is NULL.\n");
+        exit(1);
+    }
 
     /* BMP files parser which return a pointer to the image data array.Should return also height and width values.Maybe with a structure. */
     BMP_Image bmp_image = bmp_parser();
