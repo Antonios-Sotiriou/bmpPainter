@@ -3,6 +3,7 @@
 #include <string.h>
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
+#include <X11/Xlocale.h>
 #include "header_files/bmp_parser.h"
 
 //Window cr_button(Display *displ, Window win, int screen);
@@ -13,6 +14,19 @@ int main(int argc, char *argv[]) {
     int screen;
     Window win, in_frame, x_close;;
     XEvent event;
+
+    if (setlocale(LC_ALL, "") == NULL) {
+        fprintf(stderr, "setlocale(LC_ALL, "") is NULL.\n");
+        exit(1);
+    }
+    if (!XSupportsLocale()) {
+        fprintf(stderr, "Locale is not supported.Exiting.\n");
+        exit(1);
+    }
+    if (XSetLocaleModifiers("") == NULL) {
+        fprintf(stderr, "XSetLocaleModifiers is NULL.\n");
+        exit(1);
+    }
 
     /* BMP files parser which reurn a pointer to the image data array.Should return also height and width values.Maybe with a structure. */
     //char *pixel_array = bmp_parser();
@@ -55,7 +69,7 @@ int main(int argc, char *argv[]) {
     XDrawLine(displ, x_close, sign_x, 15, 0, 0, 15);
 
     /*  Parent Window */
-    in_frame = XCreateSimpleWindow(displ, win, 0, 20, 790, 470, 5, 0xff0000ff, 0x00ff00ff00);
+    in_frame = XCreateSimpleWindow(displ, win, 0, 20, 790, 470, 5, 0xff0000ff, 0x00000000);
     //XSelectInput(displ, win, ExposureMask | KeyPressMask /*| PointerMotionMask*/);
     XMapWindow(displ, in_frame);
 
@@ -86,7 +100,7 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < styles->count_styles; i++) {
         printf("Styles supported %lu.\n", styles->supported_styles[i]);
     }
-    xic = XCreateIC(xim, XNInputStyle, XIMPreeditArea | XIMStatusArea, XNClientWindow, win, NULL);
+    xic = XCreateIC(xim, XNInputStyle, XIMPreeditNothing | XIMStatusNothing, XNClientWindow, win, NULL);
     if (xic == NULL) {
         fprintf(stderr, "Could not open xic.\n");
         exit(4);
@@ -116,10 +130,21 @@ int main(int argc, char *argv[]) {
     values.line_width = 2;
     values.line_style = LineSolid;
     values.fill_rule = WindingRule;
-    values.foreground =XWhitePixel(displ, screen);
+    values.foreground = XWhitePixel(displ, screen);
     GC gc = XCreateGC(displ, win, GCForeground | GCLineWidth | GCLineStyle | GCFillRule, &values);
     //XImage *image = XCreateImage(displ, winattr.visual, winattr.depth, ZPixmap, 0, pixel_array, 640, 426, 32, 0);
 
+    /* GC to reset text with backspace */
+    XGCValues del_values;
+    del_values.foreground = XBlackPixel(displ, screen);
+    del_values.background = XBlackPixel(displ, screen);
+    del_values.fill_style = FillSolid;
+    del_values.fill_rule = WindingRule;
+    GC del_char = XCreateGC(displ, in_frame, GCForeground | GCBackground | GCFillStyle | GCFillRule, &del_values);
+
+    /* Cursor positioning */
+    int pad_left = 1;
+    int pad_down = 13;
     while (1) {
         while (XPending(displ) > 0) {
             XNextEvent(displ, &event);
@@ -139,6 +164,7 @@ int main(int argc, char *argv[]) {
                 if (event.xclient.data.l[0] == wm_delete_window) {
                     printf("WM_DELETE_WINDOW");
                     XFreeGC(displ, gc);
+                    XFree(xic);
                     XDestroyWindow(displ, win);
                     //free(pixel_array);
                     XCloseDisplay(displ);
@@ -157,20 +183,51 @@ int main(int argc, char *argv[]) {
             } else if (event.type == KeyPress && event.xclient.window == win) {  
                 int count = 0;  
                 KeySym keysym = 0;
-                char buffer[32];
+                char buffer[2];
                 Status status = 0;   
-                count = Xutf8LookupString(xic, &event.xkey, buffer, 32, &keysym, &status);
+                count = Xutf8LookupString(xic, &event.xkey, buffer, 2, &keysym, &status);
                 printf("Button pressed.\n");
                 printf("Count %d.\n", count);
                 if (status == XBufferOverflow) {
                     printf("Buffer Overflow...\n");
                 }
                 if (count) {
-                    printf("The Button that was pressed is %s.\n", buffer);
+                    if (keysym != 65288) {
+                        printf("The Button that was pressed is %s.\n", buffer);
+                        XSetInputFocus(displ, win, RevertToPointerRoot, CurrentTime);
+                        //printf("Expose Event occured.\n");
+                        font = XLoadQueryFont(displ, "7x14");
+                        text[0].chars = buffer;
+                        text[0].nchars = 1;
+                        text[0].delta = 0;
+                        text[0].font = font->fid;
+                        XDrawText(displ, in_frame, gc, pad_left, pad_down, text, 1);
+                        XUnloadFont(displ, font->fid);
+                        pad_left += 7;
+                    }
                 }
                 if (status == XLookupKeySym || status == XLookupBoth) {
                     printf("Status: %d\n", status);
-                 }
+                }
+                if (keysym == 65293) {
+                    pad_left = 0;
+                    pad_down += 13;
+                } else if (keysym == 65288) {
+                    font = XLoadQueryFont(displ, "7x14");
+                    text[0].chars = " ";
+                    text[0].nchars = 2;
+                    text[0].delta = 0;
+                    text[0].font = font->fid;
+                    XDrawText(displ, in_frame, del_char, pad_left, pad_down, text, 1);
+                    XUnloadFont(displ, font->fid);
+                    XBell(displ, 100);
+                    if (pad_left > 1) {
+                        pad_left -= 7;
+                        if (pad_down > 13 ) {
+                            pad_down -= 13;
+                        }
+                    }
+                }
                 printf("Pressed key: %lu.\n", keysym);
             } else {
                 //printf("Main Window Event.\n");
