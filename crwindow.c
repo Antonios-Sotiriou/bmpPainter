@@ -123,7 +123,7 @@ int main(int argc, char *argv[]) {
     /* Get window attributes */
     //XWindowAttributes winattr;
     //XGetWindowAttributes(displ, win, &winattr);
-    fprintf(stdout, "Window attributtes(visual): %p\n", winattr.visual);
+    //fprintf(stdout, "Window attributtes(visual): %p\n", winattr.visual);
 
     /* Add grafical context to window */
     XGCValues values;
