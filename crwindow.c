@@ -138,9 +138,9 @@ int main(int argc, char *argv[]) {
     XGCValues del_values;
     del_values.foreground = XBlackPixel(displ, screen);
     del_values.background = XBlackPixel(displ, screen);
-    del_values.fill_style = FillSolid;
-    del_values.fill_rule = WindingRule;
-    GC del_char = XCreateGC(displ, in_frame, GCForeground | GCBackground | GCFillStyle | GCFillRule, &del_values);
+    //del_values.fill_style = FillStippled;
+    //del_values.fill_rule = EvenOddRule;
+    GC del_char = XCreateGC(displ, in_frame, GCForeground | GCBackground, &del_values);
 
     /* Cursor positioning */
     int pad_left = 1;
@@ -180,6 +180,7 @@ int main(int argc, char *argv[]) {
                 text[0].font = font->fid;
                 XDrawText(displ, win, gc, (800 - XTextWidth(font, text[0].chars, text[0].nchars)) / 2, (500 - (font->ascent + font->descent)) / 2 + font->ascent, text, 1);
                 XUnloadFont(displ, font->fid);
+                //XFree(gc);
             } else if (event.type == KeyPress && event.xclient.window == win) {  
                 int count = 0;  
                 KeySym keysym = 0;
@@ -192,7 +193,7 @@ int main(int argc, char *argv[]) {
                     printf("Buffer Overflow...\n");
                 }
                 if (count) {
-                    if (keysym != 65288) {
+                    if (keysym != 65288 && keysym != 65293) {
                         printf("The Button that was pressed is %s.\n", buffer);
                         XSetInputFocus(displ, win, RevertToPointerRoot, CurrentTime);
                         //printf("Expose Event occured.\n");
@@ -203,6 +204,7 @@ int main(int argc, char *argv[]) {
                         text[0].font = font->fid;
                         XDrawText(displ, in_frame, gc, pad_left, pad_down, text, 1);
                         XUnloadFont(displ, font->fid);
+                        //XFree(gc);
                         pad_left += 7;
                     }
                 }
@@ -210,7 +212,7 @@ int main(int argc, char *argv[]) {
                     printf("Status: %d\n", status);
                 }
                 if (keysym == 65293) {
-                    pad_left = 0;
+                    pad_left = 1;
                     pad_down += 13;
                 } else if (keysym == 65288) {
                     font = XLoadQueryFont(displ, "7x14");
@@ -218,14 +220,13 @@ int main(int argc, char *argv[]) {
                     text[0].nchars = 2;
                     text[0].delta = 0;
                     text[0].font = font->fid;
-                    XDrawText(displ, in_frame, del_char, pad_left, pad_down, text, 1);
-                    XUnloadFont(displ, font->fid);
-                    XBell(displ, 100);
                     if (pad_left > 1) {
                         pad_left -= 7;
-                        if (pad_down > 13 ) {
-                            pad_down -= 13;
-                        }
+                        XFillRectangle(displ, in_frame, del_char, pad_left, pad_down - 13, 7, 15);
+                        XUnloadFont(displ, font->fid);
+                        //XFree(del_char);
+                    } else if (pad_left == 1 && pad_down > 13) {
+                        pad_down -= 13;
                     }
                 }
                 printf("Pressed key: %lu.\n", keysym);
