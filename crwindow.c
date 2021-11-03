@@ -138,9 +138,9 @@ int main(int argc, char *argv[]) {
     XGCValues del_values;
     del_values.foreground = XBlackPixel(displ, screen);
     del_values.background = XBlackPixel(displ, screen);
-    //del_values.fill_style = FillStippled;
-    //del_values.fill_rule = EvenOddRule;
-    GC del_char = XCreateGC(displ, in_frame, GCForeground | GCBackground, &del_values);
+    del_values.fill_style = FillStippled;
+    del_values.fill_rule = EvenOddRule;
+    GC del_char = XCreateGC(displ, in_frame, GCForeground | GCBackground | GCFillStyle | GCFillRule, &del_values);
 
     /* Cursor positioning */
     int pad_left = 1;
