@@ -223,6 +223,11 @@ int main(int argc, char *argv[]) {
                 if (keysym == 65293) {
                     pad_left = 1;
                     pad_down += 15;
+                    //system(user_input);
+                    user_input = realloc(user_input, sizeof(char));
+                    user_input[0] = '\0';
+                    i = 0;
+                    dynamic_inc = 2;
                 } else if (keysym == 65288) {
                     font = XLoadQueryFont(displ, "7x14");
                     text[0].chars = "";
