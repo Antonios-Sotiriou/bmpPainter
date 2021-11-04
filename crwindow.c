@@ -144,7 +144,7 @@ int main(int argc, char *argv[]) {
 
     /* Cursor positioning */
     int pad_left = 1;
-    int pad_down = 13;
+    int pad_down = 15;
     while (1) {
         while (XPending(displ) > 0) {
             XNextEvent(displ, &event);
@@ -180,7 +180,6 @@ int main(int argc, char *argv[]) {
                 text[0].font = font->fid;
                 XDrawText(displ, win, gc, (800 - XTextWidth(font, text[0].chars, text[0].nchars)) / 2, (500 - (font->ascent + font->descent)) / 2 + font->ascent, text, 1);
                 XUnloadFont(displ, font->fid);
-                //XFree(gc);
             } else if (event.type == KeyPress && event.xclient.window == win) {  
                 int count = 0;  
                 KeySym keysym = 0;
@@ -204,7 +203,6 @@ int main(int argc, char *argv[]) {
                         text[0].font = font->fid;
                         XDrawText(displ, in_frame, gc, pad_left, pad_down, text, 1);
                         XUnloadFont(displ, font->fid);
-                        //XFree(gc);
                         pad_left += 7;
                     }
                 }
@@ -213,10 +211,10 @@ int main(int argc, char *argv[]) {
                 }
                 if (keysym == 65293) {
                     pad_left = 1;
-                    pad_down += 13;
+                    pad_down += 15;
                 } else if (keysym == 65288) {
                     font = XLoadQueryFont(displ, "7x14");
-                    text[0].chars = " ";
+                    text[0].chars = "";
                     text[0].nchars = 2;
                     text[0].delta = 0;
                     text[0].font = font->fid;
@@ -224,9 +222,8 @@ int main(int argc, char *argv[]) {
                         pad_left -= 7;
                         XFillRectangle(displ, in_frame, del_char, pad_left, pad_down - 13, 7, 15);
                         XUnloadFont(displ, font->fid);
-                        //XFree(del_char);
-                    } else if (pad_left == 1 && pad_down > 13) {
-                        pad_down -= 13;
+                    } else if (pad_left == 1 && pad_down > 15) {
+                        pad_down -= 15;
                     }
                 }
                 printf("Pressed key: %lu.\n", keysym);
