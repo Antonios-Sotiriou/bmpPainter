@@ -145,6 +145,12 @@ int main(int argc, char *argv[]) {
     /* Cursor positioning */
     int pad_left = 1;
     int pad_down = 15;
+
+    /* Trying to get user input */
+    int i = 0;
+    int dynamic_inc = 2;
+    char *user_input = malloc(sizeof(char));
+
     while (1) {
         while (XPending(displ) > 0) {
             XNextEvent(displ, &event);
@@ -181,19 +187,19 @@ int main(int argc, char *argv[]) {
                 XDrawText(displ, win, gc, (800 - XTextWidth(font, text[0].chars, text[0].nchars)) / 2, (500 - (font->ascent + font->descent)) / 2 + font->ascent, text, 1);
                 XUnloadFont(displ, font->fid);
             } else if (event.type == KeyPress && event.xclient.window == win) {  
-                int count = 0;  
+                int count = 0; 
                 KeySym keysym = 0;
                 char buffer[2];
                 Status status = 0;   
                 count = Xutf8LookupString(xic, &event.xkey, buffer, 2, &keysym, &status);
-                printf("Button pressed.\n");
-                printf("Count %d.\n", count);
+                //printf("Button pressed.\n");
+                //printf("Count %d.\n", count);
                 if (status == XBufferOverflow) {
                     printf("Buffer Overflow...\n");
                 }
                 if (count) {
                     if (keysym != 65288 && keysym != 65293) {
-                        printf("The Button that was pressed is %s.\n", buffer);
+                        //printf("The Button that was pressed is %s.\n", buffer);
                         XSetInputFocus(displ, win, RevertToPointerRoot, CurrentTime);
                         //printf("Expose Event occured.\n");
                         font = XLoadQueryFont(displ, "7x14");
@@ -202,12 +208,17 @@ int main(int argc, char *argv[]) {
                         text[0].delta = 0;
                         text[0].font = font->fid;
                         XDrawText(displ, in_frame, gc, pad_left, pad_down, text, 1);
+                        user_input = realloc(user_input, sizeof(char) * dynamic_inc);
+                        user_input[i] = buffer[0];
+                        user_input[i + 1] = '\0';
+                        i++;
+                        dynamic_inc++;
                         XUnloadFont(displ, font->fid);
                         pad_left += 7;
                     }
                 }
                 if (status == XLookupKeySym || status == XLookupBoth) {
-                    printf("Status: %d\n", status);
+                    //printf("Status: %d\n", status);
                 }
                 if (keysym == 65293) {
                     pad_left = 1;
@@ -221,12 +232,17 @@ int main(int argc, char *argv[]) {
                     if (pad_left > 1) {
                         pad_left -= 7;
                         XFillRectangle(displ, in_frame, del_char, pad_left, pad_down - 13, 7, 15);
+                        user_input = realloc(user_input, sizeof(char) * dynamic_inc - 1);
+                        user_input[i - 1] = '\0';
+                        i--;
+                        dynamic_inc--;
                         XUnloadFont(displ, font->fid);
                     } else if (pad_left == 1 && pad_down > 15) {
                         pad_down -= 15;
                     }
                 }
-                printf("Pressed key: %lu.\n", keysym);
+                //printf("Pressed key: %lu.\n", keysym);
+                printf("User Input: %s.\n", user_input);
             } else {
                 //printf("Main Window Event.\n");
                 //printf("Event Type: %d\n", event.type);
@@ -237,6 +253,7 @@ int main(int argc, char *argv[]) {
             XSync(displ, False);
         }
     }
+    free(user_input);
 
     return 0;
 }
