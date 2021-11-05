@@ -1,3 +1,8 @@
+#ifdef _WIN32
+    #include <Windows.h>
+#else
+    #include <unistd.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -150,6 +155,7 @@ int main(int argc, char *argv[]) {
     int i = 0;
     int dynamic_inc = 2;
     char *user_input = malloc(sizeof(char));
+    char path[100];
 
     while (1) {
         while (XPending(displ) > 0) {
@@ -223,7 +229,16 @@ int main(int argc, char *argv[]) {
                 if (keysym == 65293) {
                     pad_left = 1;
                     pad_down += 15;
-                    //system(user_input);
+                    int error_code = system(user_input);
+                    if (error_code != 0) {
+                        printf("Error %d while trying to run the command.\n", error_code);
+                        exit(error_code);
+                    }
+                    if (strcmp(user_input, "cd") == 0) {
+                        printf("%s\n", getcwd(path, 100));
+                        chdir("/");
+                        printf("%s\n", getcwd(path, 100));
+                    }
                     user_input = realloc(user_input, sizeof(char));
                     user_input[0] = '\0';
                     i = 0;
