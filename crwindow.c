@@ -170,8 +170,9 @@ int main(int argc, char *argv[]) {
                 destroy.data.l[0] = wm_delete_window;
                 event.xclient = destroy;
                 XSendEvent(displ, win, True, ClientMessage, &event);
-            }
-            if (event.type == ClientMessage) {
+            } else if (event.type == MotionNotify && event.xmotion.window == win) {
+                printf("Pointer motion Coords:\n x = %d\ny = %d\n", event.xmotion.x, event.xmotion.y);
+            } else if (event.type == ClientMessage) {
                 printf("Client Message Event.\n");
                 if (event.xclient.data.l[0] == wm_delete_window) {
                     printf("WM_DELETE_WINDOW");
@@ -229,15 +230,17 @@ int main(int argc, char *argv[]) {
                 if (keysym == 65293) {
                     pad_left = 1;
                     pad_down += 15;
-                    int error_code = system(user_input);
-                    if (error_code != 0) {
-                        printf("Error %d while trying to run the command.\n", error_code);
-                        exit(error_code);
-                    }
+                    // int error_code = system(user_input);
+                    // if (error_code != 0) {
+                    //     printf("Error %d while trying to run the command.\n", error_code);
+                    //     exit(error_code);
+                    // }
                     if (strcmp(user_input, "cd") == 0) {
                         printf("%s\n", getcwd(path, 100));
-                        chdir("/");
+                        chdir(getenv("HOME"));
                         printf("%s\n", getcwd(path, 100));
+                    } else if (strcmp(user_input, "cd ..") == 0) {
+                        chdir("..");
                     }
                     user_input = realloc(user_input, sizeof(char));
                     user_input[0] = '\0';
