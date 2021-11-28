@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
     root_attr.cursor = None;
     root_attr.override_redirect = True;
 
-    win = XCreateWindow(displ, XDefaultRootWindow(displ), 440, 240, 800, 500, 0, winattr.depth, InputOutput, winattr.visual, CWCursor | CWEventMask | CWBackPixel | CWOverrideRedirect, &root_attr);
+    win = XCreateWindow(displ, XDefaultRootWindow(displ), 0, 0, winattr.width / 2, winattr.height / 2, 0, winattr.depth, InputOutput, winattr.visual, CWCursor | CWEventMask | CWBackPixel | CWOverrideRedirect, &root_attr);
     XSelectInput(displ, win, root_attr.event_mask);
     XMapWindow(displ, win);
 
@@ -170,8 +170,8 @@ int main(int argc, char *argv[]) {
                 destroy.data.l[0] = wm_delete_window;
                 event.xclient = destroy;
                 XSendEvent(displ, win, True, ClientMessage, &event);
-            } else if (event.type == MotionNotify && event.xmotion.window == win) {
-                printf("Pointer motion Coords:\n x = %d\ny = %d\n", event.xmotion.x, event.xmotion.y);
+            } else if (event.type == MotionNotify) {
+                printf("Pointer motion Coords:\n x = %d\ny = %d\n", event.xmotion.x, event.xmotion.x_root);
             } else if (event.type == ClientMessage) {
                 printf("Client Message Event.\n");
                 if (event.xclient.data.l[0] == wm_delete_window) {
@@ -235,6 +235,7 @@ int main(int argc, char *argv[]) {
                     //     printf("Error %d while trying to run the command.\n", error_code);
                     //     exit(error_code);
                     // }
+                    system(user_input);
                     if (strcmp(user_input, "cd") == 0) {
                         printf("%s\n", getcwd(path, 100));
                         chdir(getenv("HOME"));
