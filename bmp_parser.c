@@ -54,6 +54,8 @@ BMP_Image bmp_parser() {
                             } else {
                                 fprintf(stderr, "Failed to allocate memory for the image data.\n");
                                 bmp_image.data = "Error 4";
+                                free(image_data);
+                                free(pixel_array);
                                 return bmp_image;
                             }
                         }
@@ -61,6 +63,7 @@ BMP_Image bmp_parser() {
                 } else {
                     fprintf(stderr, "Failed to allocate memory for the image data.\n");
                     bmp_image.data = "Error 3";
+                    free(image_data);
                     return bmp_image; 
                 }
             } else {
