@@ -165,6 +165,7 @@ int main(int argc, char *argv[]) {
             XSync(displ, False);
         }
     }
+    free(bmp_image.data);
 
     return 0;
 }
