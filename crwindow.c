@@ -165,6 +165,7 @@ int main(int argc, char *argv[]) {
             XSync(displ, False);
         }
     }
+    // Not the best position to free the memory because it stays allocated when we press cntrl-C
     free(bmp_image.data);
 
     return 0;
