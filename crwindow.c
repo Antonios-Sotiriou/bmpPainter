@@ -3,204 +3,157 @@
 #include <string.h>
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
-#include <X11/Xlocale.h>
+#include "header_files/locale.h"
 #include "header_files/bmp.h"
 #include "header_files/bmp_parser.h"
 
-//Window cr_button(Display *displ, Window win, int screen);
+enum { App_Close, App_Name, Atom_Type, Atom_Last};
 
-int main(int argc, char *argv[]) {
+#define WIDTH      800
+#define HEIGHT     800
 
-    Display *displ;
-    int screen;
-    Window win/*, child_win*/;
-    XEvent event;
+#define KEYBOARDMASKS             ( KeyPressMask )
+#define EXPOSEMASKS               ( StructureNotifyMask | ExposureMask )
 
-    if (setlocale(LC_ALL, "") == NULL) {
-        fprintf(stderr, "setlocale(LC_ALL, "") is NULL.\n");
-        exit(1);
+static const void clientmessage(XEvent *event);
+static const void reparentnotify(XEvent *event);
+static const void expose(XEvent *event);
+static const void keypress(XEvent *event);
+static const void atomsinit(void);
+static const int board(void);
+
+static int RUNNING = 1;
+static void (*handler[LASTEvent]) (XEvent *event) = {
+    [ClientMessage] = clientmessage,
+    [ReparentNotify] = reparentnotify,
+    [Expose] = expose,
+    [KeyPress] = keypress,
+};
+
+Display *displ;
+Window app;
+XImage *image;
+XWindowAttributes stat_app;
+static Atom wmatom[Atom_Last];
+
+static const void clientmessage(XEvent *event) {
+    printf("ClientMessage event received\n");
+    if (event->xclient.data.l[0] == wmatom[App_Close]) {
+
+        XDestroyWindow(displ, app);
+        XCloseDisplay(displ);
+
+        RUNNING = 0;
     }
-    if (!XSupportsLocale()) {
-        fprintf(stderr, "Locale is not supported.Exiting.\n");
-        exit(1);
-    }
-    if (XSetLocaleModifiers("") == NULL) {
-        fprintf(stderr, "XSetLocaleModifiers is NULL.\n");
-        exit(1);
-    }
+}
+static const void reparentnotify(XEvent *event) {
 
-    /* BMP files parser which return a pointer to the image data array.Should return also height and width values.Maybe with a structure. */
+    if (event->xreparent.parent != app) 
+
+        XGetWindowAttributes(displ, app, &stat_app);
+}
+static const void expose(XEvent *event) {
+    
+    printf("Expose event received\n");
+
+    GC gc = XCreateGC(displ, app, 0, NULL);
     BMP_Image bmp_image = bmp_parser();
+    image = XCreateImage(displ, stat_app.visual, stat_app.depth, ZPixmap, 0, bmp_image.data, bmp_image.width, bmp_image.heigth, 32, 0);
+    XPutImage(displ, app, gc, image, 0, 0, 0, 0, bmp_image.width, bmp_image.heigth);
+    free(bmp_image.data);
+    XFreeGC(displ, gc);
+}
+static const void keypress(XEvent *event) {
 
-    displ = XOpenDisplay(NULL);
-    if (displ == NULL) {
-        fprintf(stderr, "Failed to open Display.\n");
-        exit(1);
-    }
-
-    screen = DefaultScreen(displ);
-    printf("Default screen value: %d\n", screen);
-
-    /*  Parent Window */
-    win = XCreateSimpleWindow(displ, XRootWindow(displ, screen), 0, 0, 800, 600, 0, XWhitePixel(displ, screen), XBlackPixel(displ, screen));
-    XSelectInput(displ, win, ExposureMask | KeyPressMask /*| PointerMotionMask*/);
-    XMapWindow(displ, win);
-
-    /* Delete window initializer area */
-    Atom wm_delete_window = XInternAtom(displ, "WM_DELETE_WINDOW", False);
-    XSetWMProtocols(displ, win, &wm_delete_window, 1);
-
-    /* Change main window Title */
-    Atom new_attr = XInternAtom(displ, "WM_NAME", False);
-    Atom type =  XInternAtom(displ, "STRING", False);
-    XChangeProperty(displ, win, new_attr, type, 8, PropModeReplace, (unsigned char*)"GastGeber", 10);
-
-    /* Child Window */
-    // child_win = XCreateSimpleWindow(displ, win, 0, 0, 180, 80, 2, 0x000fff, 0xffffff);
-    // XSelectInput(displ, child_win, ExposureMask | KeyPressMask);
-    // XMapWindow(displ, child_win);
-
-    // Window button = cr_button(displ, win, screen);
-    //XSync(displ, False);
-
-    /* Get window attributes */
-    XWindowAttributes winattr;
-    XGetWindowAttributes(displ, win, &winattr);
-    fprintf(stdout, "Window attributtes(visual): %p\n", winattr.visual);
-
-    /* Write Text on window area */
-    XFontStruct *font;
-    XTextItem text[1];
-
-    /* Add grafical context to window */
-    XGCValues values;
-    values.line_width = 2;
-    values.line_style = LineSolid;
-    values.fill_rule = WindingRule;
-    values.foreground =XWhitePixel(displ, screen);
-    GC gc = XCreateGC(displ, win, GCForeground | GCLineWidth | GCLineStyle | GCFillRule, &values);
-    //GC gc = XCreateGC(displ, win, 0, 0);
-    XImage *image = XCreateImage(displ, winattr.visual, winattr.depth, ZPixmap, 0, bmp_image.data, bmp_image.width, bmp_image.heigth, 32, 0);
-
-    /* Get user text input *******************************************************************/
+    /* Get user text input */
     XIM xim;
     XIC xic;
     char *failed_arg;
     XIMStyles *styles;
-    //XIMStyle xim_requested_style;
+
     xim = XOpenIM(displ, NULL, NULL, NULL);
     if (xim == NULL) {
-        fprintf(stderr, "Failed to open Input Method.\n");
-        exit(2);
+        fprintf(stderr, "keypress() - XOpenIM()");
     }
+    
     failed_arg = XGetIMValues(xim, XNQueryInputStyle, &styles, NULL);
     if (failed_arg != NULL) {
-        fprintf(stderr, "Failed to obtain input method's styles.\n");
-        exit(3);
+        fprintf(stderr, "keypress() - XGetIMValues()");
     }
-    for (int i = 0; i < styles->count_styles; i++) {
-        printf("Styles supported %lu.\n", styles->supported_styles[i]);
-    }
-    xic = XCreateIC(xim, XNInputStyle, XIMPreeditNothing | XIMStatusNothing, XNClientWindow, win, NULL);
+    XFree(failed_arg);
+
+    xic = XCreateIC(xim, XNInputStyle, XIMPreeditNothing | XIMStatusNothing, XNClientWindow, app, NULL);
     if (xic == NULL) {
-        fprintf(stderr, "Could not open xic.\n");
-        exit(4);
+        fprintf(stderr, "keypress() - XreateIC()");
     }
     XSetICFocus(xic);
 
-    while (1) {
-        while (XPending(displ) > 0) {
-            XNextEvent(displ, &event);
-            // if (event.xmotion.subwindow == child_win || event.xany.window == child_win) {
-            //     printf("Child Window Event.\n");
-            //     printf("Event Type: %d\n", event.type);
-            // } else if (event.type == ButtonPress && event.xclient.window == button) {
-            //     printf("A button was Presed\n");
-            // } else if (event.type == ButtonRelease && event.xclient.window == button) {
-            //     printf("A button was Released\n");
-            if (event.type == ClientMessage) {
-                if (event.xclient.data.l[0] == wm_delete_window) {
-                    printf("WM_DELETE_WINDOW");
-                    XFreeGC(displ, gc);
-                    XFree(xic);
-                    free(bmp_image.data);
-                    XCloseDisplay(displ);
-                    return 0;
-                }
-            } else if (event.type == Expose && event.xclient.window == win) {
-                XSetInputFocus(displ, win, RevertToPointerRoot, CurrentTime);
-                printf("Expose Event occured.\n");
-                font = XLoadQueryFont(displ, "7x14");
-                text[0].chars = "Press Me!";
-                text[0].nchars = 9;
-                text[0].delta = 0;
-                text[0].font = font->fid;
-                XDrawText(displ, win, gc, (800 - XTextWidth(font, text[0].chars, text[0].nchars)) / 2, (500 - (font->ascent + font->descent)) / 2 + font->ascent, text, 1);
-                XUnloadFont(displ, font->fid);
-            } else if (event.type == KeyPress && event.xclient.window == win) {  
-                int count = 0;  
-                KeySym keysym = 0;
-                char buffer[32];
-                Status status = 0;   
-                count = Xutf8LookupString(xic, &event.xkey, buffer, 32, &keysym, &status);
-                printf("Button pressed.\n");
-                printf("Count %d.\n", count);
-                if (status == XBufferOverflow) {
-                    printf("Buffer Overflow...\n");
-                }
-                if (count) {
-                    printf("The Button that was pressed is %s.\n", buffer);
-                }
-                if (status == XLookupKeySym || status == XLookupBoth) {
-                    printf("Status: %d\n", status);
-                 }
-                printf("Pressed key: %lu.\n", keysym);
-            } else {
-                printf("Main Window Event.\n");
-                printf("Event Type: %d\n", event.type);
-                /* Draw some lines to experiment */
-                //XDrawLine(displ, child_win, DefaultGC(displ, screen), rand() % 180, rand() % 80, rand() % 60, rand() % 60);
-            }
-            XPutImage(displ, win, gc, image, 0, 0, 0, 0, bmp_image.width, bmp_image.heigth);
-            XSync(displ, False);
-        }
+    KeySym keysym = 0;
+    char buffer[32];
+    Status status = 0;
+    Xutf8LookupString(xic, &event->xkey, buffer, 32, &keysym, &status);
+    if (status == XBufferOverflow) {
+        fprintf(stderr, "Buffer Overflow...\n");
     }
-    // Not the best position to free the memory because it stays allocated when we press cntrl-C
-    free(bmp_image.data);
+    if (status != XLookupKeySym || status != XLookupBoth) {
+        fprintf(stderr, "Status: %d\n", status);
+    }
+    if (keysym == 65293) {
+        event->type = Expose;
+        XSendEvent(displ, app, False, StructureNotifyMask, event);
+    } else {
+        return;
+    }
 
-    return 0;
+    XDestroyIC(xic);
+    XCloseIM(xim);
 }
+static const void atomsinit(void) {
 
-// Window cr_button(Display *displ, Window win, int screen) {
+    /* Delete window initializer area */
+    wmatom[App_Close] = XInternAtom(displ, "WM_DELETE_WINDOW", False);
+    XSetWMProtocols(displ, app, &wmatom[App_Close], 1);
 
-//     int x, y, width, height;
-//     Window button;
+    /* Change main window Title */
+    wmatom[App_Name] = XInternAtom(displ, "WM_NAME", False);
+    wmatom[Atom_Type] =  XInternAtom(displ, "STRING", False);
+    XChangeProperty(displ, app, wmatom[App_Name], wmatom[Atom_Type], 8, PropModeReplace, (unsigned char*)"BMP Parser", 10);
+}
+static const int board(void) {
 
-//     Colormap colormap;
-//     XColor button_color, lightgray_color, darkgray_color;
-//     XGCValues gcv_lightgray, gcv_darkgray;
-//     GC gc_lightgray, gc_darkgray;
-    
-//     button = XCreateSimpleWindow(displ, win, 622, 352, 50, 20, 4, 0x000fff, 0xffffff);
-//     XSelectInput(displ, button, ExposureMask | KeyPressMask | ButtonPressMask | ButtonReleaseMask);
-//     XMapWindow(displ, button);
+    XEvent event;
 
-//     colormap = DefaultColormap(displ, screen);
-//     XParseColor(displ, colormap, "rbg:cc/cc/cc", &button_color);
-//     XAllocColor(displ, colormap, &button_color);
+    displ = XOpenDisplay(NULL);
+    if (displ == NULL) {
+        fprintf(stderr, "Failed to open Display.\n");
+        return EXIT_FAILURE;
+    }
+    int screen = XDefaultScreen(displ);
 
-//     XParseColor(displ, colormap, "rbg:ee/ee/ee", &lightgray_color);
-//     XAllocColor(displ, colormap, &lightgray_color);
-//     gcv_lightgray.foreground = lightgray_color.pixel;
-//     gcv_lightgray.background = button_color.pixel;
-//     gc_lightgray = XCreateGC(displ, RootWindow(displ, screen), GCForeground | GCBackground, &gcv_lightgray);
+    /*  App main Window */
+    app = XCreateSimpleWindow(displ, XRootWindow(displ, screen), 0, 0, WIDTH, HEIGHT, 0, XWhitePixel(displ, screen), XBlackPixel(displ, screen));
+    XSelectInput(displ, app, EXPOSEMASKS | KEYBOARDMASKS);
+    XMapWindow(displ, app);
 
-//     XParseColor(displ, colormap, "rbg:88/88/88", &darkgray_color);
-//     XAllocColor(displ, colormap, &darkgray_color);
-//     gcv_darkgray.foreground = darkgray_color.pixel;
-//     gcv_darkgray.background = button_color.pixel;
-//     gc_darkgray = XCreateGC(displ, RootWindow(displ, screen), GCForeground | GCBackground, &gcv_darkgray);
+    atomsinit();
 
-//     return button;
-// }
+    while (RUNNING) {
+
+        XNextEvent(displ, &event);
+
+        if (handler[event.type])
+            handler[event.type](&event);
+    }
+    return EXIT_SUCCESS;
+}
+int main(int argc, char *argv[]) {
+
+    if (locale_init())
+        fprintf(stderr, "Warning: Main -locale()\n");
+
+    if (board())
+        return EXIT_FAILURE;
+
+    return EXIT_SUCCESS;
+}
 

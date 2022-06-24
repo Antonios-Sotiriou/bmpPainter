@@ -14,14 +14,14 @@ BMP_Image bmp_parser() {
     }
 
     FILE *fp;
-    char fname[] = {"/home/as/Desktop/sample.bmp"};
+    char fname;
     char *image_data;
     BMP_Image bmp_image;
     
-    // printf("Enter file path: \n");
-    // scanf("%s", &fname);
+    printf("Enter file absolut path: \n");
+    scanf("%s", &fname);
     
-    fp = fopen(fname, "rb");
+    fp = fopen(&fname, "rb");
     if (fp != NULL) {
         fread(&header, sizeof(BMP_Header), 1, fp);
         if (header.Type == 0x4d42) {
@@ -100,17 +100,4 @@ BMP_Image bmp_parser() {
 
     return bmp_image;
 }
-
-    /* Fixing image rotation and orientation */
-    // int z = 0;
-    // char *bmp_image.data = calloc(1, sizeof(char) * info.Height * info.Width * 4);
-    // for (int i = (sizeof(char) * info.Height * info.Width * 4) - 1; i >= 0; i -= 4) {
-    //     bmp_image.data[z] = image_data[i - 3];
-    //     bmp_image.data[z + 1] = image_data[i - 2];
-    //     bmp_image.data[z + 2] = image_data[i - 1];
-    //     bmp_image.data[z + 3] = image_data[i];    
-    //     z += 4;
-    // }
-    // free(image_data);
-    // return bmp_image.data;
 

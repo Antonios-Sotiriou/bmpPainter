@@ -7,7 +7,7 @@ RM = rm
 LINKS = -lX11
 
 all:
-	$(CC) $(CFLAGS) crwindow.c bmp_parser.c -o $(OBJ) $(LINKS)
+	$(CC) $(CFLAGS) crwindow.c locale.c bmp_parser.c -o $(OBJ) $(LINKS)
 exec:
 
 clean:

@@ -1,8 +1,7 @@
 # Xlib GUI. Version 1.0.0
 ### The compiler used to run this software is "gcc (Debian 10.3.0-9) 10.3.0"
 Only Xlib and standard C Libraries have been used to develop this software.<br><br>
-This software only displays a Main window to draw on and base event functionality.<br>
-It also contains a BMP file parser do draw images on screen.<br>
+This software draws BMP images on screen by providing the absolut path to the image.<br>
 If you are interested in obtaining this software, clone it and compile it with the following command.<br>
 ```
 make all
