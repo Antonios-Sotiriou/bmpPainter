@@ -1,7 +1,7 @@
 # Compile all c files to crwindow executable!
 
 CC = gcc
-CFLAGS = -Wall -Werror -g
+CFLAGS = -Wall -Werror -O2
 OBJ = crwindow
 RM = rm
 LINKS = -lX11
