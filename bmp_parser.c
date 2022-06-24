@@ -32,7 +32,7 @@ BMP_Image bmp_parser() {
                 printf("Aquired Header info size: %d\n", info.Size);
                 fseek(fp, 14 + info.Size, SEEK_SET);
                 bmp_image.width = info.Width;
-                bmp_image.heigth = info.Height;
+                bmp_image.height = info.Height;
                 /* Allocate the amount of memory needed to store the pixel array */
                 image_data = calloc(1, sizeof(char) * info.Height * info.Width * 4);
                 if (image_data != NULL) {

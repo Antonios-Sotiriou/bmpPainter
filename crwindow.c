@@ -58,8 +58,8 @@ static const void expose(XEvent *event) {
 
     GC gc = XCreateGC(displ, app, 0, NULL);
     BMP_Image bmp_image = bmp_parser();
-    image = XCreateImage(displ, stat_app.visual, stat_app.depth, ZPixmap, 0, bmp_image.data, bmp_image.width, bmp_image.heigth, 32, 0);
-    XPutImage(displ, app, gc, image, 0, 0, 0, 0, bmp_image.width, bmp_image.heigth);
+    image = XCreateImage(displ, stat_app.visual, stat_app.depth, ZPixmap, 0, bmp_image.data, bmp_image.width, bmp_image.height, 32, 0);
+    XPutImage(displ, app, gc, image, 0, 0, 0, 0, bmp_image.width, bmp_image.height);
     free(bmp_image.data);
     XFreeGC(displ, gc);
 }
@@ -117,7 +117,7 @@ static const void atomsinit(void) {
     /* Change main window Title */
     wmatom[App_Name] = XInternAtom(displ, "WM_NAME", False);
     wmatom[Atom_Type] =  XInternAtom(displ, "STRING", False);
-    XChangeProperty(displ, app, wmatom[App_Name], wmatom[Atom_Type], 8, PropModeReplace, (unsigned char*)"BMP Parser", 10);
+    XChangeProperty(displ, app, wmatom[App_Name], wmatom[Atom_Type], 8, PropModeReplace, (unsigned char*)"BMP Painter", 11);
 }
 static const int board(void) {
 

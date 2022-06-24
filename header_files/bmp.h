@@ -63,7 +63,7 @@ typedef struct {
 } Pixels;
 typedef struct {
     int width;
-    int heigth;
+    int height;
     char *data;
 } BMP_Image;
 
