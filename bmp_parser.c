@@ -15,7 +15,7 @@ BMP_Image bmp_parser() {
 
     FILE *fp;
     char fname;
-    char *image_data;
+    char *image_data = { 0 };
     BMP_Image bmp_image;
     
     printf("Enter file absolut path: \n");

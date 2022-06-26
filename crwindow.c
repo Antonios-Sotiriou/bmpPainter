@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
 #include "header_files/locale.h"
@@ -18,7 +17,8 @@ enum { App_Close, App_Name, Atom_Type, Atom_Last};
 static const void clientmessage(XEvent *event);
 static const void reparentnotify(XEvent *event);
 static const void expose(XEvent *event);
-static const void keypress(XEvent *event);
+static const void pixmapupdate(void);
+static const void pixmapdisplay(void);
 static const void atomsinit(void);
 static const int board(void);
 
@@ -27,19 +27,19 @@ static void (*handler[LASTEvent]) (XEvent *event) = {
     [ClientMessage] = clientmessage,
     [ReparentNotify] = reparentnotify,
     [Expose] = expose,
-    [KeyPress] = keypress,
 };
 
 Display *displ;
 Window app;
 XImage *image;
+Pixmap pixmap;
 XWindowAttributes stat_app;
 static Atom wmatom[Atom_Last];
 
 static const void clientmessage(XEvent *event) {
-    printf("ClientMessage event received\n");
-    if (event->xclient.data.l[0] == wmatom[App_Close]) {
 
+    if (event->xclient.data.l[0] == wmatom[App_Close]) {
+        printf("Exiting...\n");
         XDestroyWindow(displ, app);
         XCloseDisplay(displ);
 
@@ -51,62 +51,44 @@ static const void reparentnotify(XEvent *event) {
     if (event->xreparent.parent != app) 
 
         XGetWindowAttributes(displ, app, &stat_app);
-}
-static const void expose(XEvent *event) {
-    
-    printf("Expose event received\n");
 
-    GC gc = XCreateGC(displ, app, 0, NULL);
+    XGCValues gc_vals;
+    gc_vals.graphics_exposures = False;
+    GC gc = XCreateGC(displ, app, GCGraphicsExposures, &gc_vals);
+
     BMP_Image bmp_image = bmp_parser();
     image = XCreateImage(displ, stat_app.visual, stat_app.depth, ZPixmap, 0, bmp_image.data, bmp_image.width, bmp_image.height, 32, 0);
     XPutImage(displ, app, gc, image, 0, 0, 0, 0, bmp_image.width, bmp_image.height);
+    XRaiseWindow(displ, app);
+    
+    pixmapupdate();
+
     free(bmp_image.data);
     XFreeGC(displ, gc);
+    XFree(image);
 }
-static const void keypress(XEvent *event) {
+static const void expose(XEvent *event) {
 
-    /* Get user text input */
-    XIM xim;
-    XIC xic;
-    char *failed_arg;
-    XIMStyles *styles;
+    pixmapdisplay();
+}
+static const void pixmapupdate(void) {
 
-    xim = XOpenIM(displ, NULL, NULL, NULL);
-    if (xim == NULL) {
-        fprintf(stderr, "keypress() - XOpenIM()");
-    }
-    
-    failed_arg = XGetIMValues(xim, XNQueryInputStyle, &styles, NULL);
-    if (failed_arg != NULL) {
-        fprintf(stderr, "keypress() - XGetIMValues()");
-    }
-    XFree(failed_arg);
+    XGCValues gc_vals;
+    gc_vals.graphics_exposures = False;
+    GC pix = XCreateGC(displ, app, GCGraphicsExposures, &gc_vals);
 
-    xic = XCreateIC(xim, XNInputStyle, XIMPreeditNothing | XIMStatusNothing, XNClientWindow, app, NULL);
-    if (xic == NULL) {
-        fprintf(stderr, "keypress() - XreateIC()");
-    }
-    XSetICFocus(xic);
+    pixmap = XCreatePixmap(displ, app, stat_app.width, stat_app.height, stat_app.depth);
+    XCopyArea(displ, app, pixmap, pix, 0, 0, stat_app.width, stat_app.height, 0, 0);
+    XFreeGC(displ, pix);
+}
+static const void pixmapdisplay(void) {
 
-    KeySym keysym = 0;
-    char buffer[32];
-    Status status = 0;
-    Xutf8LookupString(xic, &event->xkey, buffer, 32, &keysym, &status);
-    if (status == XBufferOverflow) {
-        fprintf(stderr, "Buffer Overflow...\n");
-    }
-    if (status != XLookupKeySym || status != XLookupBoth) {
-        fprintf(stderr, "Status: %d\n", status);
-    }
-    if (keysym == 65293) {
-        event->type = Expose;
-        XSendEvent(displ, app, False, StructureNotifyMask, event);
-    } else {
-        return;
-    }
+    XGCValues gc_vals;
+    gc_vals.graphics_exposures = False;
+    GC pix = XCreateGC(displ, app, GCGraphicsExposures, &gc_vals);
 
-    XDestroyIC(xic);
-    XCloseIM(xim);
+    XCopyArea(displ, pixmap, app, pix, 0, 0, stat_app.width, stat_app.height, 0, 0);
+    XFreeGC(displ, pix);
 }
 static const void atomsinit(void) {
 
@@ -134,6 +116,7 @@ static const int board(void) {
     app = XCreateSimpleWindow(displ, XRootWindow(displ, screen), 0, 0, WIDTH, HEIGHT, 0, XWhitePixel(displ, screen), XBlackPixel(displ, screen));
     XSelectInput(displ, app, EXPOSEMASKS | KEYBOARDMASKS);
     XMapWindow(displ, app);
+    XLowerWindow(displ, app);
 
     atomsinit();
 
